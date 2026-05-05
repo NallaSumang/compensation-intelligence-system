@@ -1,0 +1,33 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Salary {
+  id                String   @id @default(cuid())
+  companyNormalized String
+  companyRaw        String   // Keep the raw input for auditing
+  role              String
+  level             String   
+  location          String
+  yoe               Float    // CRITICAL: Years of Experience
+  baseSalary        Int
+  bonus             Int      @default(0)
+  stock             Int      @default(0)
+  totalComp         Int      // Computed by server
+  confidenceScore   Int      // Computed by server (Completeness metric)
+  createdAt         DateTime @default(now())
+
+  // Prevent identical spam submissions
+  @@unique([companyNormalized, role, level, location, yoe, baseSalary]) 
+  @@index([companyNormalized]) // For fast querying
+}
