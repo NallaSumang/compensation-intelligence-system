@@ -14,6 +14,8 @@ const SalaryInputSchema = z.object({
 });
 
 function normalizeCompany(name: string): string {
+  // Trim, uppercase, and remove all non-alphanumeric characters (except spaces if preferred, but usually we strip spaces or keep them normalized)
+  // Let's replace multiple spaces with a single space, uppercase, and remove special chars
   return name
     .trim()
     .toUpperCase()
@@ -28,8 +30,10 @@ export async function POST(req: NextRequest) {
 
     const companyNormalized = normalizeCompany(parsedData.companyRaw);
     
+    // Server Math
     const totalComp = parsedData.baseSalary + parsedData.bonus + parsedData.stock;
     
+    // Confidence Score Logic
     let confidenceScore = 50;
     if (parsedData.bonus > 0 || parsedData.stock > 0) {
       confidenceScore += 25;
@@ -56,14 +60,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(newSalary, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
-      // Changed .errors to .issues to fix the type error
-      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
+      return NextResponse.json({ error: "Validation failed", details: error.errors }, { status: 400 });
     }
     
-    // Cast error to handle Prisma specific codes safely in TS
-    if (error && typeof error === 'object' && 'code' in error && (error as any).code === "P2002") {
+    if (error.code === "P2002") {
       return NextResponse.json(
         { error: "Exact salary entry already exists." },
         { status: 409 }
