@@ -37,7 +37,7 @@ export function SalaryForm() {
 
   // 3. Explicitly pass <FormValues> to kill the "unknown" assignability error
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       companyRaw: "",
       role: "",
