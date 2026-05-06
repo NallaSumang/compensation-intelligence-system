@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const validation = querySchema.safeParse(rawParams);
     if (!validation.success) {
-      return NextResponse.json(
+      return NextResponse.json( 
         { error: "Invalid search parameters", details: validation.error.issues }, // FIXED: .issues instead of .errors
         { status: 400 }
       );
