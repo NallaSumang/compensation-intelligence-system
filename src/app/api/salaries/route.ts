@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import  prisma  from "@/lib/prisma";
+import prisma from "@/lib/prisma"; // FIXED: default import
 import { z } from "zod";
 
-// 1. Define strict validation for incoming query parameters
 const querySchema = z.object({
   role: z.string().optional(),
   company: z.string().optional(),
@@ -13,15 +12,13 @@ const querySchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    // 2. Parse URL parameters into a standard object
     const { searchParams } = new URL(req.url);
     const rawParams = Object.fromEntries(searchParams.entries());
 
-    // 3. Validate and coerce the query string
     const validation = querySchema.safeParse(rawParams);
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Invalid search parameters", details: validation.error.issues },
+        { error: "Invalid search parameters", details: validation.error.issues }, // FIXED: .issues instead of .errors
         { status: 400 }
       );
     }
@@ -29,26 +26,22 @@ export async function GET(req: NextRequest) {
     const { role, company, location, page, limit } = validation.data;
     const skip = (page - 1) * limit;
 
-    // 4. Construct the Prisma dynamic 'where' clause
-    // Using 'insensitive' mode so "software engineer" matches "Software Engineer"
     const whereClause: any = {
       ...(role && { role: { contains: role, mode: "insensitive" } }),
       ...(company && { company: { contains: company, mode: "insensitive" } }),
       ...(location && { location: { contains: location, mode: "insensitive" } }),
     };
 
-    // 5. Execute DB calls in parallel to reduce waterfall latency
     const [salaries, totalCount] = await Promise.all([
       prisma.salary.findMany({
         where: whereClause,
         skip,
         take: limit,
-        orderBy: { createdAt: "desc" }, // Most recent compensation data first
+        orderBy: { createdAt: "desc" },
       }),
-      prisma.salary.count({ where: whereClause }), // Get total for client-side pagination
+      prisma.salary.count({ where: whereClause }),
     ]);
 
-    // 6. Return data with pagination metadata
     return NextResponse.json(
       {
         data: salaries,
@@ -70,3 +63,5 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+// ... YOUR EXISTING POST ROUTE GOES HERE
