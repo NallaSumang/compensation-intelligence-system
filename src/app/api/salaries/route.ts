@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 
-const SalaryInputSchema = z.object({
+const SalaryInputSchema = z.object({ 
   companyRaw: z.string().min(1, "Company name is required"),
   role: z.string().min(1, "Role is required"),
   level: z.string().min(1, "Level is required"),
