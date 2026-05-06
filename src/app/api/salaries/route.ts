@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import  prisma  from "@/lib/prisma";
 import { z } from "zod";
 
 // 1. Define strict validation for incoming query parameters
