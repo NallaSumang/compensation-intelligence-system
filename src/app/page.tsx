@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/prisma";
 import { SalaryForm } from "@/components/SalaryForm";
 import {
@@ -88,7 +90,6 @@ export default async function Home() {
                           <TableCell>{salary.location}</TableCell>
                           <TableCell className="text-right">{salary.yoe}</TableCell>
                           <TableCell className="text-right">{formatCurrency(salary.baseSalary)}</TableCell>
-                          {/* Defensive rendering for optional fields */}
                           <TableCell className="text-right text-muted-foreground">{formatCurrency(salary.bonus)}</TableCell>
                           <TableCell className="text-right text-muted-foreground">{formatCurrency(salary.stock)}</TableCell>
                           <TableCell className="text-right font-bold text-primary">{formatCurrency(salary.totalComp)}</TableCell>
