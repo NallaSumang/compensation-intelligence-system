@@ -29,7 +29,6 @@ const formSchema = z.object({
   stock: z.coerce.number().nonnegative().default(0),
 });
 
-// 2. Explicit type extraction to satisfy the TypeScript compiler during build
 type FormValues = z.infer<typeof formSchema>;
 
 export function SalaryForm() {
@@ -37,7 +36,7 @@ export function SalaryForm() {
 
   // 3. Explicitly pass <FormValues> to kill the "unknown" assignability error
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema) as any,
+    resolver: zodResolver(formSchema) as any, // FIXED: Bypass strict type check
     defaultValues: {
       companyRaw: "",
       role: "",
