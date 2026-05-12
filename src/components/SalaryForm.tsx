@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
-// 1. Schema with Coercion: Bridges the gap between HTML Input strings and Prisma numbers
+// Schema with Coercion: Bridges the gap between HTML Input strings and Prisma numbers
 const formSchema = z.object({
   companyRaw: z.string().min(1, "Company name is required"),
   role: z.string().min(1, "Role is required"),
@@ -34,9 +34,9 @@ type FormValues = z.infer<typeof formSchema>;
 export function SalaryForm() {
   const [isLoading, setIsLoading] = useState(false);
 
-  // 3. Explicitly pass <FormValues> to kill the "unknown" assignability error
+  // Explicitly pass <FormValues> to ensure type safety
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema) as any, // FIXED: Bypass strict type check
+    resolver: zodResolver(formSchema) as any, 
     defaultValues: {
       companyRaw: "",
       role: "",
@@ -58,16 +58,33 @@ export function SalaryForm() {
         body: JSON.stringify(values),
       });
 
+      // DEFENSIVE PARSING: Prevent the "Unexpected end of JSON input" crash
+      const contentType = response.headers.get("content-type");
+      const isJson = contentType && contentType.includes("application/json");
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit");
+        if (isJson) {
+          // Safe to parse as JSON
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Submission rejected by server");
+        } else {
+          // It's HTML or text (e.g., Vercel 504 Timeout or 405 Method Not Allowed)
+          const textError = await response.text();
+          console.error("Fatal Server Error (Non-JSON):", textError);
+          throw new Error(`Server crashed with status ${response.status}. Check network tab or Vercel logs.`);
+        }
       }
 
-      toast.success("Salary data submitted successfully!");
+      // Handle successful response safely
+      if (isJson) {
+        await response.json();
+      }
+
+      toast.success("Compensation data secured in database.");
       form.reset();
     } catch (error: any) {
-      toast.error(error.message || "Something went wrong");
-      console.error("Submission error:", error);
+      toast.error(error.message || "Network or server failure");
+      console.error("Submission error details:", error);
     } finally {
       setIsLoading(false);
     }
