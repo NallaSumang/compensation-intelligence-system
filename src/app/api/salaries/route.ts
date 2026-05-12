@@ -1,11 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import prisma from "@/lib/prisma"; 
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 
-// ... [Keep your existing GET method and querySchema] ...
+// Schema for GET (Search/Filter)
+const querySchema = z.object({
+  role: z.string().optional(),
+  company: z.string().optional(),
+  location: z.string().optional(),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+});
 
-// 1. Exact mirror of your frontend form schema
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const rawParams = Object.fromEntries(searchParams.entries());
+
+    const validation = querySchema.safeParse(rawParams);
+    if (!validation.success) {
+      return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
+    }
+
+    const { role, company, location, page, limit } = validation.data;
+    const skip = (page - 1) * limit;
+
+    const whereClause: any = {
+      ...(role && { role: { contains: role, mode: "insensitive" } }),
+      ...(company && { company: { contains: company, mode: "insensitive" } }),
+      ...(location && { location: { contains: location, mode: "insensitive" } }),
+    };
+
+    const [salaries, totalCount] = await Promise.all([
+      prisma.salary.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.salary.count({ where: whereClause }),
+    ]);
+
+    return NextResponse.json({
+      data: salaries,
+      meta: { total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) },
+    }, { status: 200 });
+
+  } catch (error: any) {
+    return NextResponse.json({ error: "Database Connection Failed" }, { status: 503 });
+  }
+}
+
+// Schema for POST (Form Submission)
 const postSchema = z.object({
   companyRaw: z.string().min(1),
   role: z.string().min(1),
@@ -19,29 +64,18 @@ const postSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    // 2. Defensive Payload Parsing
-    const text = await req.text();
-    if (!text) {
-      return NextResponse.json({ error: "Empty request body" }, { status: 400 });
-    }
-
-    const body = JSON.parse(text);
-
-    // 3. Strict Zod Validation
+    const body = await req.json();
     const validation = postSchema.safeParse(body);
+    
     if (!validation.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validation.error.format() },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
     }
 
     const data = validation.data;
-
-    // 4. Database Transaction
+    
     const newEntry = await prisma.salary.create({
       data: {
-        company: data.companyRaw, // Remapping frontend variable to DB column
+        company: data.companyRaw,
         role: data.role,
         level: data.level,
         location: data.location,
@@ -53,26 +87,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: newEntry }, { status: 201 });
-
-  } catch (error: unknown) {
-    console.error("[POST_SALARY_ERROR]:", error);
-
-    // 5. Granular Error Handling to prevent HTML 500 pages
-    if (error instanceof SyntaxError) {
-      return NextResponse.json({ error: "Invalid JSON format payload" }, { status: 400 });
-    }
-
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      // Prisma-specific errors (e.g., unique constraint violations)
-      return NextResponse.json(
-        { error: "Database operation failed", code: error.code }, 
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Internal Server Error. Check Vercel logs." },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    return NextResponse.json({ error: "Failed to save data" }, { status: 500 });
   }
 }
